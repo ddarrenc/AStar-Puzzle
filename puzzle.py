@@ -66,7 +66,7 @@ def sum_chessboard_distance(initial, goal, N):
             number = initial[x1][y1]
             if number != 0 and number != goal[x1][y1]: # ignore empty square and if already good
                 (x2,y2) = find_value_in_state(goal, number, N)
-                dist += max(abs(x2-x1) + abs(y2-y1))
+                dist += max(abs(x2-x1), abs(y2-y1))
 
     return dist
 
@@ -147,7 +147,7 @@ def weighted_a_star(root):
     while not pq.empty():
         node = pq.get()[2]
         visited.add(toTuple(node.state))
-        print(node.f)
+        # print(node.f)
 
         if node.state == node.goal:
             return generated, node.depth, node.g
@@ -157,9 +157,11 @@ def weighted_a_star(root):
         for child in children:
             if toTuple(child.state) not in visited:
                 generated += 1
-                pq.put((child.f, id(child), child))
-        
 
+                if generated % 10000 == 0:
+                    print(generated, " nodes generated...")
+
+                pq.put((child.f, id(child), child))
 
     return None
 
