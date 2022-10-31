@@ -57,6 +57,7 @@ def find_value_in_state(state, value, N):
     
     raise ValueError("Could not find value within given state")
 
+
 def sum_chessboard_distance(initial, goal, N):
     dist = 0
 
@@ -65,7 +66,20 @@ def sum_chessboard_distance(initial, goal, N):
             number = initial[x1][y1]
             if number != 0 and number != goal[x1][y1]: # ignore empty square and if already good
                 (x2,y2) = find_value_in_state(goal, number, N)
-                dist += max(abs(x2-x1), abs(y2-y1))
+                dist += max(abs(x2-x1) + abs(y2-y1))
+
+    return dist
+
+
+def sum_manhattan_distance(initial, goal, N):
+    dist = 0
+
+    for x1 in range(N):
+        for y1 in range(N):
+            number = initial[x1][y1]
+            if number != 0 and number != goal[x1][y1]:
+                (x2,y2) = find_value_in_state(goal, number, N)
+                dist += abs(x2-x1) + abs(y2-y1)
 
     return dist
 
