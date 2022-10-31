@@ -1,103 +1,79 @@
 import sys
-import time
+import copy
 from queue import PriorityQueue
 
 class ASNode:
-    def __init__(self, init_state, goal_state, weight, heuristic, g, depth):
+    def __init__(self, grid_N, init_state, goal_state, weight, heuristic, path_cost, depth, coordinates, action=None):
         self.state = init_state
         self.goal = goal_state
+        self.N = grid_N
+        self.action = action
+
         self.W = weight
         self.heuristic = heuristic
-        self.path_cost = g
+
         self.depth = depth
-        self.str = str_state(self.state)
-        self.f = self.calculate_f()
+        self.g = path_cost
 
-    def __lt__(self, other):
-        return self.f < other.f
+        self.blank_pos = coordinates
+        self.f = self.g + (self.W * self.heuristic(self.state, self.goal, self.N))
 
-    def goal_reached(self):
-        for r in range(len(self.state)):
-            for c in range(len(self.state[r])):
-                if self.state[r][c] != self.goal[r][c]:
-                    return False
-
-        return True
-
-    def expand(self):
-        children = []
-        i,j = find_value_in_state(self.state, 0)
+    def legal_moves(self):
+        legal = []
+        i,j = self.blank_pos[0], self.blank_pos[1]
 
         # Left
         if j != 0:
-            move_left = [row[:] for row in self.state]
-            move_left[i][j], move_left[i][j-1] = move_left[i][j-1], move_left[i][j]
-            children.append(move_left)
-        else:
-            children.append(None)
+            l_state = copy.deepcopy(self.state)
+            l_state[i][j], l_state[i][j-1] = l_state[i][j-1], l_state[i][j]
+            legal.append(ASNode(self.N, l_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i,j-1), "L"))
 
         # Right
-        if j != len(self.state[0]) - 1:
-            move_right = [row[:] for row in self.state]
-            move_right[i][j], move_right[i][j+1] = move_right[i][j+1], move_right[i][j]
-            children.append(move_right)
-        else:
-            children.append(None)
+        if j != self.N - 1:
+            r_state = copy.deepcopy(self.state)
+            r_state[i][j], r_state[i][j+1] = r_state[i][j+1], r_state[i][j]
+            legal.append(ASNode(self.N, r_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i,j+1), "R"))
 
         # Up
         if i != 0:
-            move_up = [row[:] for row in self.state]
-            move_up[i][j], move_up[i-1][j] = move_up[i-1][j], move_up[i][j]
-            children.append(move_up)
-        else:
-            children.append(None)
+            u_state = copy.deepcopy(self.state)
+            u_state[i][j], u_state[i-1][j] = u_state[i-1][j], u_state[i][j]
+            legal.append(ASNode(self.N, u_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i-1,j), "U"))
 
         # Down
-        if i != len(self.state) - 1:
-            move_down = [row[:] for row in self.state]
-            move_down[i][j], move_down[i+1][j] = move_down[i+1][j], move_down[i][j]
-            children.append(move_down)
-        else:
-            children.append(None)
+        if i != self.N - 1:
+            d_state = copy.deepcopy(self.state)
+            d_state[i][j], d_state[i+1][j] = d_state[i+1][j], d_state[i][j]
+            legal.append(ASNode(self.N, d_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i+1,j), "D"))
 
-        return children
+        return legal
 
-    def calculate_f(self):
-        f = self.path_cost + (self.W * self.heuristic(self.state, self.goal))
-        return f
 
-def str_state(state):
-    s = ""
-    for r in range(len(state)):
-        for c in range(len(state[r])):
-            s += str(state[r][c]) + ' '
-
-    return s
-
-def build_state(values, grid_size):
-    return [values[i:i+grid_size] for i in range(0, len(values), grid_size)]
-
-def find_value_in_state(state, value):
-    for i, row in enumerate(state):
-        if value in row:
-            return (i, row.index(value))
+def find_value_in_state(state, value, N):
+    for i in range(N):
+        for j in range(N):
+            if value == state[i][j]:
+                return (i,j)
     
     raise ValueError("Could not find value within given state")
 
-def sum_chessboard_distance(initial, goal):
+def sum_chessboard_distance(initial, goal, N):
     dist = 0
 
-    for x1 in range(len(initial)):
-        for y1 in range(len(initial[x1])):
+    for x1 in range(N):
+        for y1 in range(N):
             number = initial[x1][y1]
-            if number != 0: # ignore empty square
-                (x2,y2) = find_value_in_state(goal, number)
+            if number != 0 and number != goal[x1][y1]: # ignore empty square and if already good
+                (x2,y2) = find_value_in_state(goal, number, N)
                 dist += max(abs(x2-x1), abs(y2-y1))
 
     return dist
 
 
 def setup():
+    def build_state(values, grid_size):
+        return [values[i:i+grid_size] for i in range(0, len(values), grid_size)]
+
     GRID_N = 4 
     n = len(sys.argv)
 
@@ -127,44 +103,48 @@ def setup():
     init_state = build_state(init_state_vals, GRID_N)
     goal_state = build_state(goal_state_vals, GRID_N)
 
-    solve(ASNode(init_state, goal_state, weight, sum_chessboard_distance, 0, 0))
+    (x,y) = find_value_in_state(init_state, 0, GRID_N)
+    root = ASNode(GRID_N, init_state, goal_state, weight, sum_chessboard_distance, 0, 0, (x,y))
+    solve(root)
 
 def solve(root):
     # d = depth of shallowest goal
     # A = action list
     # F = f(n) values list
     # W = weight value of A*
-    print(weighted_a_star(root))
+
+    # N=Nodes generated, d=depth, g=pathcost
+    N, d, g = weighted_a_star(root)
+    print(N, " ", d, " ", g)
    # d, A, F = weighted_a_star(pb)
    # W = pb.W
 
+def toTuple(arr):
+    return tuple(map(tuple, arr))
 
 def weighted_a_star(root):
     pq = PriorityQueue()
     visited = set()
-    generated = 0  # N
-    moveset = ["L", "R", "U", "D"]
-    visited.add(root.str)
-    pq.put((root.f, root))
-    generated += 1
+    generated = 1
+
+    visited.add(toTuple(root.state))
+    pq.put((root.f, id(root), root))
 
     while not pq.empty():
-        pair = pq.get()
-        node = pair[1]
-        visited.add(node.str)
+        node = pq.get()[2]
+        visited.add(toTuple(node.state))
+        print(node.f)
 
-        if node.goal_reached():
-            return
-        
-        children = node.expand()
+        if node.state == node.goal:
+            return generated, node.depth, node.g
 
-        for i, c in enumerate(children):
-            if c is not None and str_state(c) not in visited:
+        children = node.legal_moves()
+
+        for child in children:
+            if toTuple(child.state) not in visited:
                 generated += 1
-                child = ASNode(c, root.goal, root.W, root.heuristic, node.path_cost+1, node.depth+1)
-                pq.put((child.f, child))
-                visited.add(str_state(c))
-                print(child.f)
+                pq.put((child.f, id(child), child))
+        
 
 
     return None
