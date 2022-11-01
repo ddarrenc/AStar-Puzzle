@@ -3,8 +3,10 @@ import time
 import copy
 from queue import PriorityQueue
 
+
 class ASNode:
-    def __init__(self, grid_N, init_state, goal_state, weight, heuristic, path_cost, depth, coordinates, prev=None, action=None):
+    def __init__(self, grid_N, init_state, goal_state, weight, heuristic,
+                 path_cost, depth, coordinates, prev=None, action=None):
         self.state = init_state
         self.goal = goal_state
         self.N = grid_N
@@ -18,38 +20,47 @@ class ASNode:
 
         self.blank_pos = coordinates
         self.prev = prev
-        self.f = self.g + (self.W * self.heuristic(self.state, self.goal, self.N))
+        self.f = self.g + (self.W * self.heuristic(self.state,
+                           self.goal, self.N))
 
     def __lt__(self, other):
         return self.f < other.f
 
     def legal_moves(self):
         legal = []
-        i,j = self.blank_pos[0], self.blank_pos[1]
+        i, j = self.blank_pos[0], self.blank_pos[1]
 
         # Left
         if j != 0:
             l_state = copy.deepcopy(self.state)
             l_state[i][j], l_state[i][j-1] = l_state[i][j-1], l_state[i][j]
-            legal.append(ASNode(self.N, l_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i,j-1), self, "L"))
+            legal.append(ASNode(self.N, l_state, self.goal, self.W,
+                                self.heuristic, self.g+1, self.depth+1,
+                                (i, j-1), self, "L"))
 
         # Right
         if j != self.N - 1:
             r_state = copy.deepcopy(self.state)
             r_state[i][j], r_state[i][j+1] = r_state[i][j+1], r_state[i][j]
-            legal.append(ASNode(self.N, r_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i,j+1), self, "R"))
+            legal.append(ASNode(self.N, r_state, self.goal, self.W,
+                                self.heuristic, self.g+1, self.depth+1,
+                                (i, j+1), self, "R"))
 
         # Up
         if i != 0:
             u_state = copy.deepcopy(self.state)
             u_state[i][j], u_state[i-1][j] = u_state[i-1][j], u_state[i][j]
-            legal.append(ASNode(self.N, u_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i-1,j), self, "U"))
+            legal.append(ASNode(self.N, u_state, self.goal, self.W,
+                                self.heuristic, self.g+1, self.depth+1,
+                                (i-1, j), self, "U"))
 
         # Down
         if i != self.N - 1:
             d_state = copy.deepcopy(self.state)
             d_state[i][j], d_state[i+1][j] = d_state[i+1][j], d_state[i][j]
-            legal.append(ASNode(self.N, d_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i+1,j), self, "D"))
+            legal.append(ASNode(self.N, d_state, self.goal, self.W,
+                                self.heuristic, self.g+1, self.depth+1,
+                                (i+1, j), self, "D"))
 
         return legal
 
@@ -58,24 +69,27 @@ def find_value_in_state(state, value, N):
     for i in range(N):
         for j in range(N):
             if value == state[i][j]:
-                return (i,j)
-    
+                return (i, j)
+
     raise ValueError("Could not find value within given state")
 
 
+# Calculates the sum of chessboard distance from goal
 def sum_chessboard_distance(initial, goal, N):
     dist = 0
 
     for x1 in range(N):
         for y1 in range(N):
             number = initial[x1][y1]
-            if number != 0 and number != goal[x1][y1]: # ignore empty square and if already good
-                (x2,y2) = find_value_in_state(goal, number, N)
+            # ignore empty square and if already good
+            if number != 0 and number != goal[x1][y1]:
+                (x2, y2) = find_value_in_state(goal, number, N)
                 dist += max(abs(x2-x1), abs(y2-y1))
 
     return dist
 
 
+# Calculates the sum of manhattan distance from goal
 def sum_manhattan_distance(initial, goal, N):
     dist = 0
 
@@ -83,7 +97,7 @@ def sum_manhattan_distance(initial, goal, N):
         for y1 in range(N):
             number = initial[x1][y1]
             if number != 0 and number != goal[x1][y1]:
-                (x2,y2) = find_value_in_state(goal, number, N)
+                (x2, y2) = find_value_in_state(goal, number, N)
                 dist += abs(x2-x1) + abs(y2-y1)
 
     return dist
@@ -91,13 +105,13 @@ def sum_manhattan_distance(initial, goal, N):
 
 def solve():
     def build_state(values, grid_size):
-        return [values[i:i+grid_size] for i in range(0, len(values), grid_size)]
+        return [values[i:i+grid_size] for i in range(0,
+                                                     len(values), grid_size)]
 
     INPUT_PATH = "inputs/"
     OUTPUT_PATH = "outputs/"
-    GRID_N = 4 
-    
-    
+    GRID_N = 4
+
     tests_dir = [x for x in os.listdir(INPUT_PATH) if 'input' in x]
 
     for test in tests_dir:
@@ -105,7 +119,8 @@ def solve():
             lines = f.readlines()
 
             if len(lines) != 11:
-                raise ValueError("Incorrect input formatting for", test, "refer to documentation")
+                raise ValueError("Incorrect input formatting for",
+                                 test, "refer to documentation")
 
             weight_text = lines[0]
             init_text = ""
@@ -133,20 +148,23 @@ def solve():
             init_state = build_state(init_state_vals, GRID_N)
             goal_state = build_state(goal_state_vals, GRID_N)
 
-            (x,y) = find_value_in_state(init_state, 0, GRID_N)
-            root = ASNode(GRID_N, init_state, goal_state, weight, sum_chessboard_distance, 0, 0, (x,y))
+            (x, y) = find_value_in_state(init_state, 0, GRID_N)
+            root = ASNode(GRID_N, init_state, goal_state,
+                          weight, sum_chessboard_distance, 0, 0, (x, y))
 
             print("Attempting to solve", test + "...")
             start_time = time.time()
             print("Working...")
+            # d = depth, N = generated
             d, N, A, F = weighted_a_star(root)
             end_time = time.time()
 
             output_suffix = test.split("input")[1]
 
             with open(OUTPUT_PATH + "output" + output_suffix, "w") as fo:
-                fo.write(init_text + "\n" + goal_text.strip() + "\n\n" + weight_text + str(d) + "\n" + str(N)
-                    + "\n" + A + "\n" + F)
+                fo.write(init_text + "\n" + goal_text.strip() + "\n\n" +
+                         weight_text + str(d) + "\n" + str(N)
+                         + "\n" + A + "\n" + F)
 
             print("Solved", test, "in", str(end_time - start_time) + "s")
             print("Output written to", OUTPUT_PATH + "output" + output_suffix)
@@ -156,8 +174,11 @@ def solve():
             print("Actions:", A)
             print("***************************************************\n")
 
+
+# Returns a tuple object
 def toTuple(arr):
     return tuple(map(tuple, arr))
+
 
 def weighted_a_star(root):
     pq = PriorityQueue()
@@ -165,6 +186,7 @@ def weighted_a_star(root):
     visited = set()
     generated = 1
 
+    # Inital addition to prio queue
     rootTuple = toTuple(root.state)
     visited.add(rootTuple)
     inQueue.add(rootTuple)
@@ -200,6 +222,7 @@ def weighted_a_star(root):
                 inQueue.add(childTuple)
 
     return None
+
 
 if __name__ == "__main__":
     solve()
