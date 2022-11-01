@@ -1,9 +1,10 @@
-import sys
+import os
+import time
 import copy
 from queue import PriorityQueue
 
 class ASNode:
-    def __init__(self, grid_N, init_state, goal_state, weight, heuristic, path_cost, depth, coordinates, action=None):
+    def __init__(self, grid_N, init_state, goal_state, weight, heuristic, path_cost, depth, coordinates, prev=None, action=None):
         self.state = init_state
         self.goal = goal_state
         self.N = grid_N
@@ -16,7 +17,11 @@ class ASNode:
         self.g = path_cost
 
         self.blank_pos = coordinates
+        self.prev = prev
         self.f = self.g + (self.W * self.heuristic(self.state, self.goal, self.N))
+
+    def __lt__(self, other):
+        return self.f < other.f
 
     def legal_moves(self):
         legal = []
@@ -26,25 +31,25 @@ class ASNode:
         if j != 0:
             l_state = copy.deepcopy(self.state)
             l_state[i][j], l_state[i][j-1] = l_state[i][j-1], l_state[i][j]
-            legal.append(ASNode(self.N, l_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i,j-1), "L"))
+            legal.append(ASNode(self.N, l_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i,j-1), self, "L"))
 
         # Right
         if j != self.N - 1:
             r_state = copy.deepcopy(self.state)
             r_state[i][j], r_state[i][j+1] = r_state[i][j+1], r_state[i][j]
-            legal.append(ASNode(self.N, r_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i,j+1), "R"))
+            legal.append(ASNode(self.N, r_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i,j+1), self, "R"))
 
         # Up
         if i != 0:
             u_state = copy.deepcopy(self.state)
             u_state[i][j], u_state[i-1][j] = u_state[i-1][j], u_state[i][j]
-            legal.append(ASNode(self.N, u_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i-1,j), "U"))
+            legal.append(ASNode(self.N, u_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i-1,j), self, "U"))
 
         # Down
         if i != self.N - 1:
             d_state = copy.deepcopy(self.state)
             d_state[i][j], d_state[i+1][j] = d_state[i+1][j], d_state[i][j]
-            legal.append(ASNode(self.N, d_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i+1,j), "D"))
+            legal.append(ASNode(self.N, d_state, self.goal, self.W, self.heuristic, self.g+1, self.depth+1, (i+1,j), self, "D"))
 
         return legal
 
@@ -84,87 +89,117 @@ def sum_manhattan_distance(initial, goal, N):
     return dist
 
 
-def setup():
+def solve():
     def build_state(values, grid_size):
         return [values[i:i+grid_size] for i in range(0, len(values), grid_size)]
 
+    INPUT_PATH = "inputs/"
+    OUTPUT_PATH = "outputs/"
     GRID_N = 4 
-    n = len(sys.argv)
-
-    if n != 2:
-        raise TypeError("Incorrect number of arguments, pass only the input txt file")
     
-    input_name = sys.argv[1]
-    with open(input_name, 'r') as f:
-        lines = f.readlines()
     
-    if len(lines) != 11:
-        raise ValueError("Incorrect input formatting, refer to documentation")
+    tests_dir = [x for x in os.listdir(INPUT_PATH) if 'input' in x]
 
-    weight = float(lines[0].strip())
-    init_state_vals = []
-    goal_state_vals = []
+    for test in tests_dir:
+        with open(INPUT_PATH + test, "r") as f:
+            lines = f.readlines()
 
-    for i in range(2, len(lines) - GRID_N - 1):
-        init_str_vals = lines[i].strip().split(" ")
-        goal_str_vals = lines[i + GRID_N + 1].strip().split(" ")
-        for n in init_str_vals:
-            init_state_vals.append(int(n))
-        for m in goal_str_vals:
-            goal_state_vals.append(int(m))
+            if len(lines) != 11:
+                raise ValueError("Incorrect input formatting for", test, "refer to documentation")
 
-    
-    init_state = build_state(init_state_vals, GRID_N)
-    goal_state = build_state(goal_state_vals, GRID_N)
+            weight_text = lines[0]
+            init_text = ""
+            goal_text = ""
 
-    (x,y) = find_value_in_state(init_state, 0, GRID_N)
-    root = ASNode(GRID_N, init_state, goal_state, weight, sum_chessboard_distance, 0, 0, (x,y))
-    solve(root)
+            weight = float(weight_text.strip())
+            init_state_vals = []
+            goal_state_vals = []
 
-def solve(root):
-    # d = depth of shallowest goal
-    # A = action list
-    # F = f(n) values list
-    # W = weight value of A*
+            for i in range(2, len(lines) - GRID_N - 1):
+                init_row = lines[i]
+                goal_row = lines[i + GRID_N + 1]
 
-    # N=Nodes generated, d=depth, g=pathcost
-    N, d, g = weighted_a_star(root)
-    print(N, " ", d, " ", g)
-   # d, A, F = weighted_a_star(pb)
-   # W = pb.W
+                init_text += init_row
+                goal_text += goal_row
+
+                init_str_vals = init_row.strip().split(" ")
+                goal_str_vals = goal_row.strip().split(" ")
+
+                for n in init_str_vals:
+                    init_state_vals.append(int(n))
+                for m in goal_str_vals:
+                    goal_state_vals.append(int(m))
+
+            init_state = build_state(init_state_vals, GRID_N)
+            goal_state = build_state(goal_state_vals, GRID_N)
+
+            (x,y) = find_value_in_state(init_state, 0, GRID_N)
+            root = ASNode(GRID_N, init_state, goal_state, weight, sum_chessboard_distance, 0, 0, (x,y))
+
+            print("Attempting to solve", test + "...")
+            start_time = time.time()
+            print("Working...")
+            d, N, A, F = weighted_a_star(root)
+            end_time = time.time()
+
+            output_suffix = test.split("input")[1]
+
+            with open(OUTPUT_PATH + "output" + output_suffix, "w") as fo:
+                fo.write(init_text + "\n" + goal_text.strip() + "\n\n" + weight_text + str(d) + "\n" + str(N)
+                    + "\n" + A + "\n" + F)
+
+            print("Solved", test, "in", str(end_time - start_time) + "s")
+            print("Output written to", OUTPUT_PATH + "output" + output_suffix)
+            print("***************************************************")
+            print("Shallowest solution found at depth", d)
+            print("Generated", N, "nodes")
+            print("Actions:", A)
+            print("***************************************************\n")
 
 def toTuple(arr):
     return tuple(map(tuple, arr))
 
 def weighted_a_star(root):
     pq = PriorityQueue()
+    inQueue = set()
     visited = set()
     generated = 1
 
-    visited.add(toTuple(root.state))
-    pq.put((root.f, id(root), root))
+    rootTuple = toTuple(root.state)
+    visited.add(rootTuple)
+    inQueue.add(rootTuple)
+    pq.put((root.f, root))
 
     while not pq.empty():
-        node = pq.get()[2]
-        visited.add(toTuple(node.state))
-        # print(node.f)
+        node = pq.get()[1]
+        nodeTuple = toTuple(node.state)
+        visited.add(nodeTuple)
+        inQueue.remove(nodeTuple)
 
         if node.state == node.goal:
-            return generated, node.depth, node.g
+            A = ""
+            F = ""
+            cursor = node
+            while cursor is not None:
+                if cursor.action is not None:
+                    A = cursor.action + " " + A
+                f = cursor.f
+                if cursor.f % 1 == 0:
+                    f = int(f)
+                F = str(f) + " " + F
+                cursor = cursor.prev
+
+            return node.depth, generated, A, F
 
         children = node.legal_moves()
-
+        generated += len(children)
         for child in children:
-            if toTuple(child.state) not in visited:
-                generated += 1
-
-                if generated % 10000 == 0:
-                    print(generated, " nodes generated...")
-
-                pq.put((child.f, id(child), child))
+            childTuple = toTuple(child.state)
+            if childTuple not in visited and childTuple not in inQueue:
+                pq.put((child.f, child))
+                inQueue.add(childTuple)
 
     return None
 
-
 if __name__ == "__main__":
-    setup()
+    solve()
