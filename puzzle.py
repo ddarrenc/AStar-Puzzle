@@ -139,7 +139,7 @@ def sum_manhattan_distance(initial, goal, N):
 # Solve puzzles inside the inputs directory and writes solution into outputs
 def solve():
     # Find all files with "input"
-    tests_dir = [x for x in os.listdir(INPUT_PATH) if "input" in x]
+    tests_dir = sorted([x for x in os.listdir(INPUT_PATH) if "Input" in x])
 
     # Solve every input
     for test in tests_dir:
@@ -194,7 +194,7 @@ def solve():
             end_time = time.time()
 
             # Name of the output file
-            output_suffix = test.split("input")[1]
+            output_suffix = test.split("Input")[1]
 
             # Write to the output
             with open(OUTPUT_PATH + "output" + output_suffix, "w") as fo:
@@ -254,12 +254,12 @@ def weighted_a_star(root):
 
         # Generate all legal moves from this state
         children = node.legal_moves()
-        generated += len(children)
 
         # For each child, if not visited and not already in the queue, add it
         for child in children:
             childTuple = toTuple(child.state)
             if childTuple not in visited and childTuple not in inQueue:
+                generated += 1
                 pq.put((child.f, child))
                 inQueue.add(childTuple)
 
