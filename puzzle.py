@@ -205,6 +205,7 @@ def solve():
             print("Solved", test, "in", str(end_time - start_time) + "s")
             print("Output written to", OUTPUT_PATH + "output" + output_suffix)
             print("***************************************************")
+            print("Weight value:", weight_text.strip())
             print("Shallowest solution found at depth", d)
             print("Generated", N, "nodes")
             print("Actions:", A)
